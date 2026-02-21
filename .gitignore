@@ -19,7 +19,7 @@ profile.cov
 coverage.html
 
 # Build binary
-claude-smi
+/claude-smi
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
