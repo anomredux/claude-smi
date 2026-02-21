@@ -17,20 +17,29 @@ import (
 	"github.com/anomredux/claude-smi/internal/ui"
 )
 
+// version is set by goreleaser via ldflags.
+var version = "dev"
+
 // maxEntries limits the number of entries to prevent OOM on huge histories.
 const maxEntries = 500_000
 
 func main() {
 	var (
-		configPath = flag.String("config", config.DefaultPath(), "config file path")
-		dataDir    = flag.String("data-dir", defaultDataDir(), "Claude Code data directory")
-		noTUI      = flag.Bool("no-tui", false, "output JSON to stdout instead of TUI")
-		view       = flag.String("view", "daily", "view for --no-tui: daily, blocks")
-		timezone = flag.String("timezone", "", "override timezone (e.g., Asia/Seoul)")
-		since      = flag.String("since", "", "filter entries from this date (YYYY-MM-DD)")
-		until      = flag.String("until", "", "filter entries until this date (YYYY-MM-DD)")
+		configPath  = flag.String("config", config.DefaultPath(), "config file path")
+		dataDir     = flag.String("data-dir", defaultDataDir(), "Claude Code data directory")
+		noTUI       = flag.Bool("no-tui", false, "output JSON to stdout instead of TUI")
+		view        = flag.String("view", "daily", "view for --no-tui: daily, blocks")
+		timezone    = flag.String("timezone", "", "override timezone (e.g., Asia/Seoul)")
+		since       = flag.String("since", "", "filter entries from this date (YYYY-MM-DD)")
+		until       = flag.String("until", "", "filter entries until this date (YYYY-MM-DD)")
+		showVersion = flag.Bool("version", false, "print version and exit")
 	)
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Println("claude-smi", version)
+		return
+	}
 
 	cfg, err := config.Load(*configPath)
 	if err != nil {
