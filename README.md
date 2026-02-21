@@ -17,11 +17,35 @@ Terminal UI for monitoring Claude Code token usage and costs — built for **Max
 
 ## Install
 
+### Download binary
+
+Prebuilt binaries for macOS, Linux, Windows (amd64/arm64):
+
+https://github.com/anomredux/claude-smi/releases/latest
+
+```bash
+VERSION=0.1.0
+
+# macOS (Apple Silicon)
+curl -sL https://github.com/anomredux/claude-smi/releases/download/v${VERSION}/claude-smi_${VERSION}_darwin_arm64.tar.gz | tar xz
+sudo mv claude-smi /usr/local/bin/
+
+# macOS (Intel)
+curl -sL https://github.com/anomredux/claude-smi/releases/download/v${VERSION}/claude-smi_${VERSION}_darwin_amd64.tar.gz | tar xz
+sudo mv claude-smi /usr/local/bin/
+
+# Linux (amd64)
+curl -sL https://github.com/anomredux/claude-smi/releases/download/v${VERSION}/claude-smi_${VERSION}_linux_amd64.tar.gz | tar xz
+sudo mv claude-smi /usr/local/bin/
+```
+
+### go install
+
 ```bash
 go install github.com/anomredux/claude-smi/cmd/claude-smi@latest
 ```
 
-Or build from source:
+### Build from source
 
 ```bash
 git clone https://github.com/anomredux/claude-smi.git
