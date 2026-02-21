@@ -335,12 +335,12 @@ func (v *BlocksView) renderDetail(cardWidth int, compact bool) string {
 		return lipgloss.NewStyle().Width(width).Align(align).Render(text)
 	}
 
-	// Header
+	// Header — colored to match data columns
 	mHeader := strings.Join([]string{
 		lipgloss.NewStyle().Width(mColModel).Align(lipgloss.Left).Foreground(theme.ColorBrightText).Bold(true).Render(i18n.T("model")),
-		lipgloss.NewStyle().Width(mColTokens).Align(lipgloss.Right).Foreground(theme.ColorBrightText).Bold(true).Render(i18n.T("tokens")),
-		lipgloss.NewStyle().Width(mColCost).Align(lipgloss.Right).Foreground(theme.ColorBrightText).Bold(true).Render(i18n.T("cost")),
-		lipgloss.NewStyle().Width(mColPct).Align(lipgloss.Right).Foreground(theme.ColorBrightText).Bold(true).Render(i18n.T("percent")),
+		lipgloss.NewStyle().Width(mColTokens).Align(lipgloss.Right).Foreground(theme.ColorLavender).Bold(true).Render(i18n.T("tokens")),
+		lipgloss.NewStyle().Width(mColCost).Align(lipgloss.Right).Foreground(theme.ColorSkyBlue).Bold(true).Render(i18n.T("cost")),
+		lipgloss.NewStyle().Width(mColPct).Align(lipgloss.Right).Foreground(theme.ColorGold).Bold(true).Render(i18n.T("percent")),
 	}, " ")
 	mSep := theme.MutedStyle.Render(strings.Repeat("─", mColModel+mColTokens+mColCost+mColPct+mGaps))
 
@@ -362,8 +362,8 @@ func (v *BlocksView) renderDetail(cardWidth int, compact bool) string {
 		bgStyle := components.RowBackground(rowIdx)
 
 		row := strings.Join([]string{
-			mCell(theme.BodyStyle.Render(mb.Model), mColModel, lipgloss.Left),
-			mCell(lipgloss.NewStyle().Foreground(theme.ColorBrightText).Render(components.FormatNumber(mb.Tokens)), mColTokens, lipgloss.Right),
+			mCell(lipgloss.NewStyle().Foreground(theme.ColorBrightText).Render(mb.Model), mColModel, lipgloss.Left),
+			mCell(lipgloss.NewStyle().Foreground(theme.ColorLavender).Render(components.FormatNumber(mb.Tokens)), mColTokens, lipgloss.Right),
 			mCell(lipgloss.NewStyle().Foreground(theme.ColorSkyBlue).Render(fmt.Sprintf("$%.4f", mb.Cost)), mColCost, lipgloss.Right),
 			mCell(lipgloss.NewStyle().Foreground(theme.ColorGold).Render(fmt.Sprintf("%.1f%%", mb.Percentage)), mColPct, lipgloss.Right),
 		}, " ")
