@@ -1,0 +1,103 @@
+package i18n
+
+var en = map[string]string{
+	// App
+	"initializing":       "Initializing...",
+	"terminal_too_small": "Terminal too small (80x24 minimum).",
+	"current_size":       "Current: %dx%d",
+	"select_project":     "Select Project",
+	"all_projects":       "All Projects",
+	"picker_help":        "j(↓)/k(↑): navigate  enter/space: toggle  esc: close",
+
+	// Tab names
+	"tab_live":         "Live Dashboard",
+	"tab_blocks":       "Session Blocks",
+	"tab_daily_report": "Report",
+
+	// Live view
+	"active_session_block": "Active Session Block",
+	"no_active_block":      "No active session block",
+	"tokens":               "Tokens",
+	"cost":                 "Cost",
+	"messages":             "Messages",
+	"remaining":            "remaining",
+	"session_timer":        "Session Timer",
+	"until_reset":          "until reset",
+	"five_hour":            "5h Session",
+	"seven_day":            "7d Window",
+	"input_tokens":         "Input",
+	"output_tokens":        "Output",
+	"cached":               "(+%s cached)",
+	"est_session_tokens":   "Est. session tokens",
+	"est_session_cost":     "Est. session cost",
+	"session_cost":         "Session Cost",
+	"cache_saved":          "(-$%s cached)",
+	"burn_rate":            "Consumption",
+	"no_active_session":    "No active session",
+	"tokens_per_min":       "Tokens/min",
+	"cost_per_hour":        "Cost/hour",
+	"projected_tokens":     "Projected tokens",
+	"projected_cost":       "Projected cost",
+	"model_breakdown":      "Model Usage",
+	"no_data":              "No data",
+	"model":                "Model",
+	"percent":              "%",
+	"today":                "Today",
+	"month":                "Month",
+	"calls":                "Calls",
+
+	// Blocks view
+	"no_blocks_found":  "No session blocks found",
+	"session_blocks":   "Session Blocks",
+	"start":            "Start",
+	"end":              "End",
+	"msgs":             "Msgs",
+	"status":           "Status",
+	"blocks_help":      "j(↓)/k(↑): navigate  enter: detail  esc: back",
+	"invalid_block":    "Invalid block",
+	"block_detail":     "Block Detail: %s - %s",
+	"recent_entries":   "Recent Entries",
+	"detail_back_help": "esc/backspace: back to list",
+
+	// Daily Report view (calendar)
+	"total":           "Total",
+	"cache_create":    "Cache W",
+	"cache_read":      "Cache R",
+	"change_month_help": "left/right: change month",
+	"day_mon":           "Mon",
+	"day_tue":           "Tue",
+	"day_wed":           "Wed",
+	"day_thu":           "Thu",
+	"day_fri":           "Fri",
+	"day_sat":           "Sat",
+	"day_sun":           "Sun",
+
+	// Help overlay
+	"keyboard_shortcuts":    "Keyboard Shortcuts",
+	"help_switch_views":     "Switch to Live / Blocks / Report",
+	"help_cycle_views":      "Cycle views forward / backward",
+	"help_navigate":         "Navigate list items",
+	"help_drill_down":       "Drill down / select",
+	"help_go_back":          "Go back / close overlay",
+	"help_toggle_help":      "Toggle this help",
+	"help_open_settings":    "Open settings",
+	"help_force_refresh":    "Force data refresh",
+	"help_project_filter":   "Project filter",
+	"help_navigate_months":  "Navigate months (Report)",
+	"help_quit":             "Quit",
+	"help_close":            "Press ? or Esc to close",
+
+	// Settings overlay
+	"settings":         "Settings",
+	"setting_timezone": "Timezone",
+	"setting_refresh":  "Refresh (sec)",
+	"setting_language": "Language",
+	"settings_help":    "j(↓)/k(↑): navigate\nh(←)/l(→)/enter: change  esc: close",
+
+	// Status bar
+	"status_help":     "Help",
+	"status_settings": "Settings",
+	"status_project":  "Project",
+	"status_refresh":  "Refresh",
+	"status_quit":     "Quit",
+}
