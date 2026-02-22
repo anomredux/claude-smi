@@ -5,6 +5,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/anomredux/claude-smi/internal/config"
+	"github.com/anomredux/claude-smi/internal/domain"
 	"github.com/anomredux/claude-smi/internal/i18n"
 	"github.com/anomredux/claude-smi/internal/pricing"
 	"github.com/anomredux/claude-smi/internal/ui/overlays"
@@ -22,6 +23,21 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return a, nil
 
+	case tea.MouseMsg:
+		if a.overlay == OverlayNone && !a.projectPicking {
+			switch msg.Button {
+			case tea.MouseButtonWheelUp:
+				a.scroll.viewScrollY[a.activeView] -= 3
+				if a.scroll.viewScrollY[a.activeView] < 0 {
+					a.scroll.viewScrollY[a.activeView] = 0
+				}
+			case tea.MouseButtonWheelDown:
+				a.scroll.viewScrollY[a.activeView] += 3
+				a.clampScrollY()
+			}
+		}
+		return a, nil
+
 	case tea.KeyMsg:
 		if a.overlay != OverlayNone {
 			return a.updateOverlay(msg)
@@ -35,14 +51,44 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case TickMsg:
 		a.notifications.Expire()
+		var loadCmd tea.Cmd
+		if a.initialLoaded {
+			loadCmd = a.loadIncremental
+		} else {
+			loadCmd = a.loadData
+		}
 		return a, tea.Batch(
-			a.loadData,
+			loadCmd,
 			fetchApiUsage,
 			doTick(time.Duration(a.Config.General.Interval)*time.Second),
 		)
 
 	case dataLoadedMsg:
+		// Store offsets from full scan
+		if msg.offsets != nil {
+			a.fileOffsetsMu.Lock()
+			a.fileOffsets = msg.offsets
+			a.fileOffsetsMu.Unlock()
+		}
+		a.initialLoaded = true
 		a.processData(msg.entries)
+		return a, nil
+
+	case incrementalLoadedMsg:
+		if len(msg.entries) > 0 {
+			// Update offsets
+			a.fileOffsetsMu.Lock()
+			for path, offset := range msg.offsets {
+				a.fileOffsets[path] = offset
+			}
+			a.fileOffsetsMu.Unlock()
+
+			// Merge new entries with existing and reprocess
+			merged := make([]domain.UsageEntry, 0, len(a.entries)+len(msg.entries))
+			merged = append(merged, a.entries...)
+			merged = append(merged, msg.entries...)
+			a.processData(merged)
+		}
 		return a, nil
 
 	case apiUsageMsg:
@@ -96,11 +142,20 @@ func (a App) handleGlobalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		cmd = a.liveView.Update(msg)
 	case ViewBlocks:
 		cmd = a.blocksView.Update(msg)
+		if a.blocksView.ScrollReset {
+			a.scroll.viewScrollY[a.activeView] = 0
+			a.blocksView.ScrollReset = false
+		}
 	case ViewDailyReport:
 		cmd = a.dailyReportView.Update(msg)
 	}
 	if cmd != nil {
 		return a, cmd
+	}
+
+	// App-level scroll handling (keys not consumed by view)
+	if a.handleScrollKey(msg) {
+		return a, nil
 	}
 
 	switch msg.String() {
@@ -123,6 +178,7 @@ func (a App) handleGlobalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		a.overlay = OverlaySettings
 	case "r":
 		a.loading = true
+		a.initialLoaded = false // force full reload
 		return a, a.loadData
 	case "p":
 		if len(a.projects) > 0 {
@@ -183,6 +239,58 @@ func (a App) updateOverlay(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 	return a, nil
+}
+
+// handleScrollKey processes scroll-related key events. Returns true if consumed.
+func (a *App) handleScrollKey(msg tea.KeyMsg) bool {
+	contentHeight := a.contentHeight()
+	pageSize := contentHeight - 2
+	if pageSize < 1 {
+		pageSize = 1
+	}
+
+	switch msg.String() {
+	case "j", "down":
+		a.scroll.viewScrollY[a.activeView]++
+		a.clampScrollY()
+		return true
+	case "k", "up":
+		a.scroll.viewScrollY[a.activeView]--
+		if a.scroll.viewScrollY[a.activeView] < 0 {
+			a.scroll.viewScrollY[a.activeView] = 0
+		}
+		return true
+	case "pgdown", " ":
+		a.scroll.viewScrollY[a.activeView] += pageSize
+		a.clampScrollY()
+		return true
+	case "pgup":
+		a.scroll.viewScrollY[a.activeView] -= pageSize
+		if a.scroll.viewScrollY[a.activeView] < 0 {
+			a.scroll.viewScrollY[a.activeView] = 0
+		}
+		return true
+	case "home", "g":
+		a.scroll.viewScrollY[a.activeView] = 0
+		return true
+	case "end", "G":
+		a.scroll.viewScrollY[a.activeView] = a.scroll.lastContentLines
+		a.clampScrollY()
+		return true
+	}
+	return false
+}
+
+// clampScrollY ensures the current view's scroll offset does not exceed
+// the maximum based on lastContentLines from the previous render.
+func (a *App) clampScrollY() {
+	maxOffset := a.scroll.lastContentLines - a.contentHeight()
+	if maxOffset < 0 {
+		maxOffset = 0
+	}
+	if a.scroll.viewScrollY[a.activeView] > maxOffset {
+		a.scroll.viewScrollY[a.activeView] = maxOffset
+	}
 }
 
 func (a *App) propagateAnimTick() {
