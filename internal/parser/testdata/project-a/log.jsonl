@@ -1,0 +1,3 @@
+{"type":"assistant","timestamp":"2026-02-19T10:00:00.000Z","sessionId":"sess_a1","requestId":"req_a1","message":{"id":"msg_a1","model":"claude-opus-4-6","usage":{"input_tokens":1000,"output_tokens":500,"cache_creation_input_tokens":100,"cache_read_input_tokens":50}}}
+{"type":"user","timestamp":"2026-02-19T09:59:00.000Z","sessionId":"sess_a1","message":{"role":"user","content":"hello"}}
+{"type":"assistant","timestamp":"2026-02-19T11:00:00.000Z","sessionId":"sess_a1","requestId":"req_a2","costUSD":0.05,"message":{"id":"msg_a2","model":"claude-haiku-4-5-20251001","usage":{"input_tokens":200,"output_tokens":100,"cache_creation_input_tokens":0,"cache_read_input_tokens":0}}}
