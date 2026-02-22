@@ -3,6 +3,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"syscall"
 	"unsafe"
@@ -32,7 +33,7 @@ type sysCredential struct {
 }
 
 // getOAuthToken reads the Claude Code OAuth token from Windows Credential Manager.
-func getOAuthToken() (string, error) {
+func getOAuthToken(_ context.Context) (string, error) {
 	filter, err := syscall.UTF16PtrFromString(keychainLabel + "*")
 	if err != nil {
 		return "", fmt.Errorf("invalid filter: %w", err)

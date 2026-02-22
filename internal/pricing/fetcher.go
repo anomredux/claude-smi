@@ -4,22 +4,38 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
 )
 
+// PriceFetcher abstracts pricing data retrieval for testing.
+type PriceFetcher interface {
+	FetchPricing(ctx context.Context) (PricingTable, error)
+}
+
+// DefaultPriceFetcher implements PriceFetcher using the LiteLLM API.
+type DefaultPriceFetcher struct{}
+
+// FetchPricing fetches pricing from LiteLLM.
+func (DefaultPriceFetcher) FetchPricing(ctx context.Context) (PricingTable, error) {
+	return FetchLiteLLM(ctx)
+}
+
 // LiteLLMURL is the URL for the LiteLLM pricing JSON.
 // Exported so tests can override it via httptest.
 var LiteLLMURL = "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json"
+
+const maxPricingResponseBody = 10 << 20 // 10 MB
 
 // httpClient is a shared client with sensible timeouts for pricing fetches.
 var httpClient = &http.Client{
 	Timeout: 15 * time.Second,
 	Transport: &http.Transport{
-		MaxIdleConns:        5,
-		IdleConnTimeout:     30 * time.Second,
-		DisableCompression:  false,
+		MaxIdleConns:       5,
+		IdleConnTimeout:    30 * time.Second,
+		DisableCompression: false,
 	},
 }
 
@@ -54,7 +70,7 @@ func FetchLiteLLM(ctx context.Context) (PricingTable, error) {
 	}
 
 	var raw map[string]liteLLMEntry
-	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, maxPricingResponseBody)).Decode(&raw); err != nil {
 		return nil, fmt.Errorf("decode litellm pricing: %w", err)
 	}
 

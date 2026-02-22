@@ -1,8 +1,10 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 )
@@ -13,7 +15,30 @@ const (
 	anthropicBeta  = "oauth-2025-04-20"
 	requestTimeout = 5 * time.Second
 	SessionWindow  = 5 * time.Hour
+	maxResponseBody = 1 << 20 // 1 MB
 )
+
+// UsageFetcher abstracts the usage API for testing.
+type UsageFetcher interface {
+	FetchUsage(ctx context.Context) (*UsageData, error)
+}
+
+// httpClient is a shared client with sensible timeouts.
+var httpClient = &http.Client{
+	Timeout: requestTimeout,
+	Transport: &http.Transport{
+		MaxIdleConns:    5,
+		IdleConnTimeout: 30 * time.Second,
+	},
+}
+
+// DefaultFetcher implements UsageFetcher using the real OAuth API.
+type DefaultFetcher struct{}
+
+// FetchUsage retrieves current usage data from the Anthropic OAuth API.
+func (DefaultFetcher) FetchUsage(ctx context.Context) (*UsageData, error) {
+	return FetchUsage(ctx)
+}
 
 // UsageData holds the parsed API response.
 type UsageData struct {
@@ -61,14 +86,13 @@ func (u UsageData) SessionRemaining() (time.Duration, error) {
 }
 
 // FetchUsage retrieves current usage data from the Anthropic OAuth API.
-func FetchUsage() (*UsageData, error) {
-	token, err := getOAuthToken()
+func FetchUsage(ctx context.Context) (*UsageData, error) {
+	token, err := getOAuthToken(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("get oauth token: %w", err)
 	}
 
-	client := &http.Client{Timeout: requestTimeout}
-	req, err := http.NewRequest("GET", usageEndpoint, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", usageEndpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
 	}
@@ -78,7 +102,7 @@ func FetchUsage() (*UsageData, error) {
 	req.Header.Set("User-Agent", "claude-smi/1.0")
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("api request: %w", err)
 	}
@@ -89,7 +113,7 @@ func FetchUsage() (*UsageData, error) {
 	}
 
 	var data UsageData
-	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, maxResponseBody)).Decode(&data); err != nil {
 		return nil, fmt.Errorf("decode response: %w", err)
 	}
 
