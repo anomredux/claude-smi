@@ -10,7 +10,8 @@ import (
 
 // StatusBar renders the bottom status bar with key hints.
 type StatusBar struct {
-	Width int
+	Width      int
+	ScrollInfo string // e.g. "Top", "42%", "Bot" — empty if no scroll
 }
 
 // Render returns the status bar: separator + key hints.
@@ -45,5 +46,17 @@ func (s StatusBar) renderKeyHints() string {
 		parts = append(parts, keyStyle.Render(h.key)+" "+theme.MutedStyle.Render(h.desc))
 	}
 
-	return "  " + strings.Join(parts, "  ")
+	left := "  " + strings.Join(parts, "  ")
+
+	if s.ScrollInfo != "" {
+		scrollStyle := lipgloss.NewStyle().Foreground(theme.ColorGold).Bold(true)
+		right := scrollStyle.Render(s.ScrollInfo) + "  "
+		gap := s.Width - lipgloss.Width(left) - lipgloss.Width(right)
+		if gap < 1 {
+			gap = 1
+		}
+		return left + strings.Repeat(" ", gap) + right
+	}
+
+	return left
 }

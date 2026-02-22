@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -20,7 +21,7 @@ func main() {
 	lv := views.NewLiveView(tz, calc)
 
 	// Try fetching real API data
-	apiData, err := api.FetchUsage()
+	apiData, err := api.FetchUsage(context.Background())
 	if err != nil {
 		fmt.Printf("API fetch failed (using mock): %v\n\n", err)
 		// Use mock API data

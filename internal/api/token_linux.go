@@ -3,6 +3,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -13,8 +14,8 @@ import (
 // Requires: sudo apt install libsecret-tools (Debian/Ubuntu)
 //
 //	or: sudo dnf install libsecret (Fedora)
-func getOAuthToken() (string, error) {
-	out, err := exec.Command("secret-tool", "lookup",
+func getOAuthToken(ctx context.Context) (string, error) {
+	out, err := exec.CommandContext(ctx, "secret-tool", "lookup",
 		"service", keychainLabel).Output()
 	if err != nil {
 		return "", fmt.Errorf("secret-tool lookup failed (install libsecret-tools): %w", err)

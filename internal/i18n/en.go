@@ -84,6 +84,9 @@ var en = map[string]string{
 	"help_force_refresh":    "Force data refresh",
 	"help_project_filter":   "Project filter",
 	"help_navigate_months":  "Navigate months (Report)",
+	"help_page_scroll":      "Page scroll",
+	"help_top_bottom":       "Jump to top / bottom",
+	"help_mouse_scroll":     "Scroll content",
 	"help_quit":             "Quit",
 	"help_close":            "Press ? or Esc to close",
 

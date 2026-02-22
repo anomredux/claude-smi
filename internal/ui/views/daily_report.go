@@ -55,12 +55,14 @@ func (v *DailyReportView) Update(msg tea.Msg) tea.Cmd {
 				v.month = time.December
 				v.year--
 			}
+			return KeyHandledCmd
 		case "right", "l":
 			v.month++
 			if v.month > time.December {
 				v.month = time.January
 				v.year++
 			}
+			return KeyHandledCmd
 		}
 	}
 	return nil

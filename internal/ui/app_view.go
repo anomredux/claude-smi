@@ -38,19 +38,20 @@ func (a App) View() string {
 	compact := a.height < 30
 
 	tabBar := a.renderTabs()
-	statusBar := a.renderStatusBar()
 
-	contentHeight := a.height - 4 // 2 tab + 2 status
-	if contentHeight < 5 {
-		contentHeight = 5
-	}
+	contentHeight := a.contentHeight()
 
 	var content string
 	if a.projectPicking {
 		content = a.renderProjectPicker()
 	} else {
 		content = a.renderActiveView(contentHeight, compact)
+		content = a.applyScroll(content, contentHeight)
 	}
+
+	// renderStatusBar must be called AFTER applyScroll so that
+	// scroll.lastContentLines is up-to-date for the indicator.
+	statusBar := a.renderStatusBar(contentHeight)
 
 	content = lipgloss.NewStyle().
 		Width(a.width).
@@ -87,19 +88,40 @@ func (a App) renderTabs() string {
 }
 
 func (a App) renderActiveView(contentHeight int, compact bool) string {
+	// For views that support app-level scrolling, pass a large height
+	// so they render full content (we slice it in applyScroll).
+	renderHeight := 9999
+
 	switch a.activeView {
 	case ViewLive:
-		return a.liveView.Render(a.width, contentHeight, compact)
+		return a.liveView.Render(a.width, renderHeight, compact)
 	case ViewBlocks:
+		if a.blocksView.InDetail() {
+			return a.blocksView.Render(a.width, renderHeight, compact)
+		}
+		// List mode: use actual height for internal list scrolling
 		return a.blocksView.Render(a.width, contentHeight, compact)
 	case ViewDailyReport:
-		return a.dailyReportView.Render(a.width, contentHeight, compact)
+		return a.dailyReportView.Render(a.width, renderHeight, compact)
 	}
 	return ""
 }
 
-func (a App) renderStatusBar() string {
-	return components.StatusBar{Width: a.width}.Render()
+func (a App) renderStatusBar(contentHeight int) string {
+	var scrollInfo string
+	if a.scroll.lastContentLines > contentHeight {
+		offset := a.scroll.viewScrollY[a.activeView]
+		maxOffset := a.scroll.lastContentLines - contentHeight
+		if offset <= 0 {
+			scrollInfo = "Top"
+		} else if offset >= maxOffset {
+			scrollInfo = "Bot"
+		} else {
+			pct := offset * 100 / maxOffset
+			scrollInfo = fmt.Sprintf("%d%%", pct)
+		}
+	}
+	return components.StatusBar{Width: a.width, ScrollInfo: scrollInfo}.Render()
 }
 
 func (a *App) renderProjectPicker() string {
@@ -174,6 +196,35 @@ func (a *App) renderProjectPicker() string {
 	}
 
 	return strings.Join(lines, "\n")
+}
+
+// applyScroll slices rendered content by the current view's scroll offset.
+// If content fits within contentHeight, the offset is reset to 0.
+// Mutations go through a.scroll (pointer) so they persist even when
+// called from the value-receiver View() method.
+func (a App) applyScroll(content string, contentHeight int) string {
+	lines := strings.Split(content, "\n")
+	totalLines := len(lines)
+	a.scroll.lastContentLines = totalLines
+
+	if totalLines <= contentHeight {
+		a.scroll.viewScrollY[a.activeView] = 0
+		return content
+	}
+
+	// Clamp offset
+	maxOffset := totalLines - contentHeight
+	offset := a.scroll.viewScrollY[a.activeView]
+	if offset < 0 {
+		offset = 0
+	}
+	if offset > maxOffset {
+		offset = maxOffset
+	}
+	a.scroll.viewScrollY[a.activeView] = offset
+
+	visible := lines[offset : offset+contentHeight]
+	return strings.Join(visible, "\n")
 }
 
 func (a App) renderOverlay() string {

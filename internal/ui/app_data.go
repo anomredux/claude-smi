@@ -2,6 +2,7 @@ package ui
 
 import (
 	"context"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -13,6 +14,8 @@ import (
 	"github.com/anomredux/claude-smi/internal/pricing"
 )
 
+// loadData performs a full scan of all JSONL files and records file sizes
+// as offsets for subsequent incremental loads.
 func (a App) loadData() tea.Msg {
 	dataDir := a.DataDir
 	if dataDir == "" {
@@ -23,17 +26,81 @@ func (a App) loadData() tea.Msg {
 		dataDir = filepath.Join(home, ".claude", "projects")
 	}
 
-	entries := parser.ScanAndParse(dataDir)
-	return dataLoadedMsg{entries: entries}
+	ctx := context.Background()
+	entries := parser.ScanAndParse(ctx, dataDir)
+
+	// Record file sizes as offsets for incremental parsing
+	offsets := make(map[string]int64)
+	_ = filepath.WalkDir(dataDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || filepath.Ext(path) != ".jsonl" {
+			return nil
+		}
+		if info, err := d.Info(); err == nil {
+			offsets[path] = info.Size()
+		}
+		return nil
+	})
+
+	return dataLoadedMsg{entries: entries, offsets: offsets}
+}
+
+// loadIncremental scans for files that have grown since the last read
+// and parses only the new data.
+func (a App) loadIncremental() tea.Msg {
+	dataDir := a.DataDir
+	if dataDir == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return incrementalLoadedMsg{}
+		}
+		dataDir = filepath.Join(home, ".claude", "projects")
+	}
+
+	// Build a list of changed files
+	a.fileOffsetsMu.Lock()
+	currentOffsets := make(map[string]int64, len(a.fileOffsets))
+	for k, v := range a.fileOffsets {
+		currentOffsets[k] = v
+	}
+	a.fileOffsetsMu.Unlock()
+
+	var changes []parser.FileChange
+	_ = filepath.WalkDir(dataDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || filepath.Ext(path) != ".jsonl" {
+			return nil
+		}
+		info, err := d.Info()
+		if err != nil {
+			return nil
+		}
+		lastOffset, known := currentOffsets[path]
+		if !known || info.Size() > lastOffset {
+			changes = append(changes, parser.FileChange{
+				Path:   path,
+				Offset: lastOffset,
+			})
+		}
+		return nil
+	})
+
+	if len(changes) == 0 {
+		return incrementalLoadedMsg{}
+	}
+
+	ctx := context.Background()
+	entries, newOffsets := parser.ParseIncremental(ctx, changes)
+	return incrementalLoadedMsg{entries: entries, offsets: newOffsets}
 }
 
 func fetchApiUsage() tea.Msg {
-	data, err := api.FetchUsage()
+	ctx := context.Background()
+	data, err := api.FetchUsage(ctx)
 	return apiUsageMsg{data: data, err: err}
 }
 
 func fetchPricing() tea.Msg {
-	table, err := pricing.FetchLiteLLM(context.Background())
+	ctx := context.Background()
+	table, err := pricing.FetchLiteLLM(ctx)
 	return pricingMsg{table: table, err: err}
 }
 

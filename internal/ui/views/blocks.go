@@ -15,13 +15,13 @@ import (
 )
 
 type BlocksView struct {
-	blocks       []domain.SessionBlock
-	tz           *time.Location
-	cursor       int
-	detail       bool
-	scroll       int
-	detailScroll int
-	AnimTick     uint
+	blocks      []domain.SessionBlock
+	tz          *time.Location
+	cursor      int
+	detail      bool
+	scroll      int
+	ScrollReset bool // signals app to reset scroll offset
+	AnimTick    uint
 }
 
 func NewBlocksView(tz *time.Location) *BlocksView {
@@ -37,33 +37,44 @@ func (v *BlocksView) SetData(blocks []domain.SessionBlock) {
 
 func (v *BlocksView) Update(msg tea.Msg) tea.Cmd {
 	if km, ok := msg.(tea.KeyMsg); ok {
+		if v.detail {
+			// Detail mode: only consume esc/backspace (back to list).
+			// j/k/pgup/pgdn fall through to app-level scroll.
+			switch km.String() {
+			case "esc", "backspace":
+				v.detail = false
+				v.ScrollReset = true
+				return KeyHandledCmd
+			}
+			return nil
+		}
+
+		// List mode: consume navigation keys.
 		switch km.String() {
 		case "j", "down":
-			if v.detail {
-				v.detailScroll++
-			} else if v.cursor < len(v.blocks)-1 {
+			if v.cursor < len(v.blocks)-1 {
 				v.cursor++
 			}
+			return KeyHandledCmd
 		case "k", "up":
-			if v.detail {
-				if v.detailScroll > 0 {
-					v.detailScroll--
-				}
-			} else if v.cursor > 0 {
+			if v.cursor > 0 {
 				v.cursor--
 			}
+			return KeyHandledCmd
 		case "enter":
-			if !v.detail && len(v.blocks) > 0 {
+			if len(v.blocks) > 0 {
 				v.detail = true
-				v.detailScroll = 0
+				v.ScrollReset = true
 			}
-		case "esc", "backspace":
-			if v.detail {
-				v.detail = false
-			}
+			return KeyHandledCmd
 		}
 	}
 	return nil
+}
+
+// InDetail returns whether the view is in detail mode.
+func (v *BlocksView) InDetail() bool {
+	return v.detail
 }
 
 func (v *BlocksView) Render(width, height int, compact bool) string {
@@ -175,8 +186,10 @@ func (v *BlocksView) renderList(cardWidth, contentHeight int, compact bool) stri
 	rows = append(rows, headerLine)
 	rows = append(rows, separator)
 
-	// Compute max visible rows for scrolling
-	visibleRows := contentHeight - 8 // card border + header + separator + footer
+	// Compute max visible rows for scrolling.
+	// 8 = card border top/bottom (2) + title (1) + help line (1)
+	//   + header (1) + separator (1) + scroll indicator (1) + padding (1)
+	visibleRows := contentHeight - 8
 	if visibleRows < 3 {
 		visibleRows = 3
 	}

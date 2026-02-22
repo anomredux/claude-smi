@@ -38,6 +38,10 @@ func (h *HelpOverlay) Render(width, height int) string {
 		{"", ""},
 		{"h / l / Left / Right", i18n.T("help_navigate_months")},
 		{"", ""},
+		{"PgUp / PgDn", i18n.T("help_page_scroll")},
+		{"g / G", i18n.T("help_top_bottom")},
+		{"Mouse Wheel", i18n.T("help_mouse_scroll")},
+		{"", ""},
 		{"q / Ctrl+C", i18n.T("help_quit")},
 	}
 

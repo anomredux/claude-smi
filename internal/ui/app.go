@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"sync"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -30,15 +31,24 @@ const (
 	OverlaySettings
 )
 
+// scrollState holds per-view scroll offsets. Stored as a pointer in App
+// so that both Update (value receiver returning model) and View (value
+// receiver, return value discarded) share the same mutable state.
+type scrollState struct {
+	viewScrollY      [ViewCount]int
+	lastContentLines int // total lines of last rendered content
+}
+
 // TickMsg triggers periodic data refresh.
 type TickMsg time.Time
 
 // BlinkMsg triggers UI-only refresh for smooth animation (250ms).
 type BlinkMsg time.Time
 
-// dataLoadedMsg carries freshly parsed data.
+// dataLoadedMsg carries freshly parsed data from a full scan.
 type dataLoadedMsg struct {
 	entries []domain.UsageEntry
+	offsets map[string]int64
 }
 
 // apiUsageMsg carries usage data fetched from the OAuth API.
@@ -51,6 +61,12 @@ type apiUsageMsg struct {
 type pricingMsg struct {
 	table pricing.PricingTable
 	err   error
+}
+
+// incrementalLoadedMsg carries new entries parsed incrementally.
+type incrementalLoadedMsg struct {
+	entries []domain.UsageEntry
+	offsets map[string]int64
 }
 
 type App struct {
@@ -98,6 +114,14 @@ type App struct {
 	width  int
 	height int
 
+	// Scroll state — pointer so View() (value receiver) mutations persist.
+	scroll *scrollState
+
+	// Incremental parsing state
+	fileOffsets   map[string]int64
+	fileOffsetsMu *sync.Mutex
+	initialLoaded bool // true after first full scan
+
 	// State
 	loading bool
 	ready   bool
@@ -118,17 +142,20 @@ func NewApp(cfg config.Config) App {
 	calc := pricing.NewCalculator(table, pricing.CostModeAuto)
 
 	return App{
-		activeView:     ViewLive,
-		overlay:        OverlayNone,
-		Config:         cfg,
-		tz:             tz,
-		calc:           calc,
-		activeProjects: make(map[string]bool),
-		liveView:       views.NewLiveView(tz, calc),
-		blocksView:     views.NewBlocksView(tz),
+		activeView:      ViewLive,
+		overlay:         OverlayNone,
+		Config:          cfg,
+		tz:              tz,
+		calc:            calc,
+		scroll:          &scrollState{},
+		activeProjects:  make(map[string]bool),
+		fileOffsets:     make(map[string]int64),
+		fileOffsetsMu:   &sync.Mutex{},
+		liveView:        views.NewLiveView(tz, calc),
+		blocksView:      views.NewBlocksView(tz),
 		dailyReportView: views.NewDailyReportView(tz),
-		helpOverlay:    overlays.NewHelpOverlay(),
-		notifications:  NewNotificationManager(cfg.Notifications.Bell),
+		helpOverlay:     overlays.NewHelpOverlay(),
+		notifications:   NewNotificationManager(cfg.Notifications.Bell),
 	}
 }
 
@@ -140,6 +167,16 @@ func (a App) Init() tea.Cmd {
 		fetchPricing,
 		doBlink(),
 	)
+}
+
+// contentHeight returns the available height for the main content area
+// (total height minus tab bar and status bar: 2 + 2 = 4 lines).
+func (a App) contentHeight() int {
+	h := a.height - 4
+	if h < 5 {
+		h = 5
+	}
+	return h
 }
 
 func doBlink() tea.Cmd {
