@@ -75,7 +75,7 @@ func main() {
 	app.DataDir = *dataDir
 	app.SinceFilter = *since
 	app.UntilFilter = *until
-	p := tea.NewProgram(app, tea.WithAltScreen())
+	p := tea.NewProgram(app, tea.WithAltScreen(), tea.WithMouseCellMotion())
 
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -91,7 +91,7 @@ func runNoTUI(cfg config.Config, dataDir, view, since, until string) {
 	}
 
 	// Scan and parse all JSONL files
-	entries := parser.ScanAndParse(dataDir)
+	entries := parser.ScanAndParse(context.Background(), dataDir)
 	if len(entries) > maxEntries {
 		entries = entries[len(entries)-maxEntries:]
 	}
@@ -118,7 +118,7 @@ func runNoTUI(cfg config.Config, dataDir, view, since, until string) {
 		os.Exit(1)
 	}
 
-	var data interface{}
+	var data any
 	switch view {
 	case "daily":
 		data = domain.AggregateDaily(entries, tz)
