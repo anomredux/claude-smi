@@ -45,3 +45,5 @@ Thumbs.db
 # Claude
 .agents/
 .claude/
+skills-lock.json
+docs/review/
