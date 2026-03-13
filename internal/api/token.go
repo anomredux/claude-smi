@@ -23,7 +23,7 @@ func getOAuthTokenFromFile() (string, error) {
 
 // getOAuthTokenFromPath reads and validates a credential file at the given path.
 func getOAuthTokenFromPath(path string) (string, error) {
-	f, err := os.Open(path)
+	f, err := os.Open(path) //nolint:gosec // G304: path derived from user home directory
 	if err != nil {
 		return "", fmt.Errorf("open credentials file: %w", err)
 	}

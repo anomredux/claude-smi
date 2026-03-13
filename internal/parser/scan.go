@@ -47,19 +47,20 @@ func ScanAndParse(ctx context.Context, dataDir string) []domain.UsageEntry {
 		if ctx.Err() != nil {
 			break
 		}
-
-		f, err := os.Open(path)
-		if err != nil {
-			continue
-		}
-
-		projectPath := filepath.Dir(path)
-		result := ParseReader(f, projectPath)
-		all = append(all, result.Entries...)
-		f.Close()
+		all = append(all, parseFileEntries(path)...)
 	}
 
 	return all
+}
+
+// parseFileEntries opens a .jsonl file and returns its parsed entries.
+func parseFileEntries(path string) []domain.UsageEntry {
+	f, err := os.Open(path) //nolint:gosec // G304: path from controlled directory walk
+	if err != nil {
+		return nil
+	}
+	defer f.Close()
+	return ParseReader(f, filepath.Dir(path)).Entries
 }
 
 // FileChange describes a file that has changed since the last read.
@@ -77,31 +78,36 @@ func ParseIncremental(ctx context.Context, changes []FileChange) (entries []doma
 		if ctx.Err() != nil {
 			break
 		}
-
-		f, err := os.Open(fc.Path)
-		if err != nil {
-			continue
-		}
-
-		// Seek to the last known offset
-		if fc.Offset > 0 {
-			if _, err := f.Seek(fc.Offset, io.SeekStart); err != nil {
-				f.Close()
-				continue
-			}
-		}
-
-		projectPath := filepath.Dir(fc.Path)
-		result := ParseReader(f, projectPath)
-		entries = append(entries, result.Entries...)
-
-		// Record the new offset
-		pos, err := f.Seek(0, io.SeekCurrent)
-		if err == nil {
+		e, pos, ok := parseFileFrom(fc)
+		entries = append(entries, e...)
+		if ok {
 			newOffsets[fc.Path] = pos
 		}
-		f.Close()
 	}
 
 	return entries, newOffsets
+}
+
+// parseFileFrom reads new entries from a file starting at the given offset.
+// Returns the entries, the new file offset, and whether the offset is valid.
+func parseFileFrom(fc FileChange) ([]domain.UsageEntry, int64, bool) {
+	f, err := os.Open(fc.Path) //nolint:gosec // G304: path from controlled file watch
+	if err != nil {
+		return nil, 0, false
+	}
+	defer f.Close()
+
+	if fc.Offset > 0 {
+		if _, err := f.Seek(fc.Offset, io.SeekStart); err != nil {
+			return nil, 0, false
+		}
+	}
+
+	result := ParseReader(f, filepath.Dir(fc.Path))
+
+	pos, err := f.Seek(0, io.SeekCurrent)
+	if err != nil {
+		return result.Entries, 0, false
+	}
+	return result.Entries, pos, true
 }

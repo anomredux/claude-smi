@@ -11,7 +11,7 @@ import (
 var defaultPricingJSON []byte
 
 type ModelPricing struct {
-	Input         float64 `json:"input"`          // per 1M tokens
+	Input         float64 `json:"input"` // per 1M tokens
 	Output        float64 `json:"output"`
 	CacheCreation float64 `json:"cache_creation"`
 	CacheRead     float64 `json:"cache_read"`

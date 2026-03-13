@@ -7,6 +7,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
 	"github.com/anomredux/claude-smi/internal/domain"
 	"github.com/anomredux/claude-smi/internal/i18n"
 	"github.com/anomredux/claude-smi/internal/theme"
@@ -19,13 +20,13 @@ var (
 
 	// Per-column colors: Sun Mon Tue Wed Thu Fri Sat
 	dayColumnColors = [7]lipgloss.Color{
-		colorWeekendFaded,  // Sun
-		theme.ColorSkyBlue, // Mon
+		colorWeekendFaded,   // Sun
+		theme.ColorSkyBlue,  // Mon
 		theme.ColorLavender, // Tue
-		theme.ColorMauve,   // Wed
-		theme.ColorPeach,   // Thu
-		theme.ColorGold,    // Fri
-		colorWeekendFaded,  // Sat
+		theme.ColorMauve,    // Wed
+		theme.ColorPeach,    // Thu
+		theme.ColorGold,     // Fri
+		colorWeekendFaded,   // Sat
 	}
 )
 

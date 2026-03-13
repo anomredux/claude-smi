@@ -7,6 +7,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+
 	"github.com/anomredux/claude-smi/internal/api"
 	"github.com/anomredux/claude-smi/internal/domain"
 	"github.com/anomredux/claude-smi/internal/i18n"
@@ -16,10 +17,10 @@ import (
 )
 
 type LiveView struct {
-	entries      []domain.UsageEntry
-	blocks       []domain.SessionBlock
-	daily        []domain.DailyAggregate
-	tz *time.Location
+	entries  []domain.UsageEntry
+	blocks   []domain.SessionBlock
+	daily    []domain.DailyAggregate
+	tz       *time.Location
 	calc     *pricing.Calculator
 	apiUsage *api.UsageData
 	AnimTick uint

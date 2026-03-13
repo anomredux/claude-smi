@@ -8,6 +8,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
 	"github.com/anomredux/claude-smi/internal/domain"
 	"github.com/anomredux/claude-smi/internal/i18n"
 	"github.com/anomredux/claude-smi/internal/theme"

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+
 	"github.com/anomredux/claude-smi/internal/theme"
 )
 
@@ -83,4 +84,3 @@ func RenderGaugeRow(gauges []SemicircleGauge, gap int) string {
 	lines := JoinHorizontal(blocks, gap)
 	return strings.Join(lines, "\n")
 }
-

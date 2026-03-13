@@ -72,11 +72,11 @@ func TestScanAndParse_IgnoresNonJSONL(t *testing.T) {
 	dir := t.TempDir()
 
 	// Create a .txt file that should be ignored
-	if err := os.WriteFile(filepath.Join(dir, "notes.txt"), []byte("not jsonl"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "notes.txt"), []byte("not jsonl"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	// Create a .json file that should be ignored
-	if err := os.WriteFile(filepath.Join(dir, "data.json"), []byte("{}"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "data.json"), []byte("{}"), 0600); err != nil {
 		t.Fatal(err)
 	}
 

@@ -46,7 +46,7 @@ func TestLoad_InvalidTOML(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "bad.toml")
-	if err := os.WriteFile(path, []byte("{{invalid toml}}"), 0644); err != nil {
+	if err := os.WriteFile(path, []byte("{{invalid toml}}"), 0600); err != nil {
 		t.Fatalf("WriteFile failed: %v", err)
 	}
 

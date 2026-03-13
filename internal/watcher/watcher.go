@@ -97,7 +97,7 @@ func (w *Watcher) Start() error {
 						w.checkFile(event.Name)
 					}
 				case <-w.stop:
-					fsw.Close()
+					_ = fsw.Close()
 					return
 				}
 			}

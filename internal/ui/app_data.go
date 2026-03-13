@@ -8,6 +8,7 @@ import (
 	"sort"
 
 	tea "github.com/charmbracelet/bubbletea"
+
 	"github.com/anomredux/claude-smi/internal/api"
 	"github.com/anomredux/claude-smi/internal/domain"
 	"github.com/anomredux/claude-smi/internal/parser"
