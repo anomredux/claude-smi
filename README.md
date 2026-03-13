@@ -27,15 +27,15 @@ https://github.com/anomredux/claude-smi/releases/latest
 VERSION=0.1.2
 
 # macOS (Apple Silicon)
-curl -sL https://github.com/anomredux/claude-smi/releases/download/v${VERSION}/claude-smi_${VERSION}_darwin_arm64.tar.gz | tar xz
+curl -sL "https://github.com/anomredux/claude-smi/releases/download/v${VERSION}/claude-smi_${VERSION}_darwin_arm64.tar.gz" | tar xz
 sudo mv claude-smi /usr/local/bin/
 
 # macOS (Intel)
-curl -sL https://github.com/anomredux/claude-smi/releases/download/v${VERSION}/claude-smi_${VERSION}_darwin_amd64.tar.gz | tar xz
+curl -sL "https://github.com/anomredux/claude-smi/releases/download/v${VERSION}/claude-smi_${VERSION}_darwin_amd64.tar.gz" | tar xz
 sudo mv claude-smi /usr/local/bin/
 
 # Linux (amd64)
-curl -sL https://github.com/anomredux/claude-smi/releases/download/v${VERSION}/claude-smi_${VERSION}_linux_amd64.tar.gz | tar xz
+curl -sL "https://github.com/anomredux/claude-smi/releases/download/v${VERSION}/claude-smi_${VERSION}_linux_amd64.tar.gz" | tar xz
 sudo mv claude-smi /usr/local/bin/
 ```
 
