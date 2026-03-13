@@ -2,10 +2,12 @@ package ui
 
 import (
 	"sync"
+	"sync/atomic"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/anomredux/claude-smi/internal/animation"
 	"github.com/anomredux/claude-smi/internal/api"
 	"github.com/anomredux/claude-smi/internal/config"
 	"github.com/anomredux/claude-smi/internal/domain"
@@ -37,7 +39,12 @@ const (
 // receiver, return value discarded) share the same mutable state.
 type scrollState struct {
 	viewScrollY      [ViewCount]int
-	lastContentLines int // total lines of last rendered content
+	lastContentLines atomic.Int64 // total lines of last rendered content (atomic for View/Update safety)
+}
+
+// Tickable is implemented by views/overlays that receive animation ticks.
+type Tickable interface {
+	SetAnimTick(tick uint)
 }
 
 // TickMsg triggers periodic data refresh.
@@ -45,6 +52,9 @@ type TickMsg time.Time
 
 // BlinkMsg triggers UI-only refresh for smooth animation (250ms).
 type BlinkMsg time.Time
+
+// AnimFrameMsg triggers spring animation updates (50ms / 20 FPS).
+type AnimFrameMsg struct{}
 
 // dataLoadedMsg carries freshly parsed data from a full scan.
 type dataLoadedMsg struct {
@@ -94,7 +104,9 @@ type App struct {
 	apiUsage        *api.UsageData // from OAuth API
 
 	// Animation state
-	animTick uint
+	animTick    uint
+	animator    *animation.SpringAnimator
+	animRunning bool // true when animation loop is active
 
 	// Project filter
 	projects       []string        // available project paths
@@ -141,6 +153,7 @@ func NewApp(cfg config.Config) App {
 		table = make(pricing.PricingTable)
 	}
 	calc := pricing.NewCalculator(table, pricing.CostModeAuto)
+	animator := animation.NewSpringAnimator()
 
 	return App{
 		activeView:      ViewLive,
@@ -148,11 +161,12 @@ func NewApp(cfg config.Config) App {
 		Config:          cfg,
 		tz:              tz,
 		calc:            calc,
+		animator:        animator,
 		scroll:          &scrollState{},
 		activeProjects:  make(map[string]bool),
 		fileOffsets:     make(map[string]int64),
 		fileOffsetsMu:   &sync.Mutex{},
-		liveView:        views.NewLiveView(tz, calc),
+		liveView:        views.NewLiveView(tz, calc, animator),
 		blocksView:      views.NewBlocksView(tz),
 		dailyReportView: views.NewDailyReportView(tz),
 		helpOverlay:     overlays.NewHelpOverlay(),
@@ -180,9 +194,24 @@ func (a App) contentHeight() int {
 	return h
 }
 
+// ensureAnimRunning starts the animation loop if it's not already running.
+func (a *App) ensureAnimRunning() tea.Cmd {
+	if a.animRunning {
+		return nil
+	}
+	a.animRunning = true
+	return doAnimFrame()
+}
+
 func doBlink() tea.Cmd {
 	return tea.Tick(250*time.Millisecond, func(t time.Time) tea.Msg {
 		return BlinkMsg(t)
+	})
+}
+
+func doAnimFrame() tea.Cmd {
+	return tea.Tick(50*time.Millisecond, func(t time.Time) tea.Msg {
+		return AnimFrameMsg{}
 	})
 }
 
@@ -190,4 +219,15 @@ func doTick(interval time.Duration) tea.Cmd {
 	return tea.Tick(interval, func(t time.Time) tea.Msg {
 		return TickMsg(t)
 	})
+}
+
+func (a *App) propagateAnimTick() {
+	tick := a.animTick
+	a.liveView.AnimTick = tick
+	a.blocksView.AnimTick = tick
+	a.dailyReportView.AnimTick = tick
+	a.helpOverlay.AnimTick = tick
+	if a.settingsOverlay != nil {
+		a.settingsOverlay.SetAnimTick(tick)
+	}
 }

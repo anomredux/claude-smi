@@ -2,12 +2,15 @@ package views
 
 import (
 	"fmt"
+	"math"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/anomredux/claude-smi/internal/animation"
 	"github.com/anomredux/claude-smi/internal/api"
 	"github.com/anomredux/claude-smi/internal/domain"
 	"github.com/anomredux/claude-smi/internal/i18n"
@@ -16,7 +19,17 @@ import (
 	"github.com/anomredux/claude-smi/internal/ui/components"
 )
 
+// renderSnapshot holds all data needed by Render, copied under lock.
+// This eliminates data races between Update (write) and View (read) goroutines.
+type renderSnapshot struct {
+	apiUsage             *api.UsageData
+	burn                 burnCache
+	cachedModelBreakdown map[string]domain.ModelBreakdown
+}
+
 type LiveView struct {
+	mu sync.RWMutex
+
 	entries  []domain.UsageEntry
 	blocks   []domain.SessionBlock
 	daily    []domain.DailyAggregate
@@ -24,9 +37,11 @@ type LiveView struct {
 	calc     *pricing.Calculator
 	apiUsage *api.UsageData
 	AnimTick uint
+	animator animation.Animator // interface, never nil (NullAnimator if unset)
 
 	// Cached burn rate (recomputed only on data change)
-	burn burnCache
+	burn            burnCache
+	burnInitialized bool // true after first non-empty burn computation
 
 	// Cached model breakdown (recomputed only on data change)
 	cachedSessionEntries []domain.UsageEntry
@@ -45,11 +60,16 @@ type burnCache struct {
 	hasData      bool
 }
 
-func NewLiveView(tz *time.Location, calc *pricing.Calculator) *LiveView {
-	return &LiveView{tz: tz, calc: calc}
+func NewLiveView(tz *time.Location, calc *pricing.Calculator, animator animation.Animator) *LiveView {
+	if animator == nil {
+		animator = animation.NullAnimator()
+	}
+	return &LiveView{tz: tz, calc: calc, animator: animator}
 }
 
 func (v *LiveView) SetData(entries []domain.UsageEntry, blocks []domain.SessionBlock, daily []domain.DailyAggregate) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
 	v.entries = entries
 	v.blocks = blocks
 	v.daily = daily
@@ -57,12 +77,59 @@ func (v *LiveView) SetData(entries []domain.UsageEntry, blocks []domain.SessionB
 }
 
 func (v *LiveView) SetApiUsage(data *api.UsageData) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
 	v.apiUsage = data
+	v.animator.Set(animation.KeyGauge5h, data.FiveHour.Utilization/100.0)
+	v.animator.Set(animation.KeyGauge7d, data.SevenDay.Utilization/100.0)
 	if len(v.entries) > 0 {
 		v.recomputeBurn()
 	}
 }
 
+// ResetAnimations clears all animation springs owned by this view.
+// Call this when the view is being recreated (e.g., config change).
+func (v *LiveView) ResetAnimations() {
+	v.animator.Delete(animation.KeyGauge5h)
+	v.animator.Delete(animation.KeyGauge7d)
+	v.clearBurnSprings()
+}
+
+// clearBurnSprings removes all burn rate springs.
+func (v *LiveView) clearBurnSprings() {
+	v.animator.Delete(animation.KeyBurnInput)
+	v.animator.Delete(animation.KeyBurnOutput)
+	v.animator.Delete(animation.KeyBurnCacheCreate)
+	v.animator.Delete(animation.KeyBurnCacheRead)
+	v.animator.Delete(animation.KeyBurnCost)
+	v.animator.Delete(animation.KeyBurnSavings)
+	v.animator.Delete(animation.KeyBurnTokPerMin)
+	v.animator.Delete(animation.KeyBurnCostPerHr)
+}
+
+// pushBurnSprings pushes burn rate values to the animator.
+// Separated from recomputeBurn for SRP: domain computation vs animation binding.
+func (v *LiveView) pushBurnSprings(bc burnCache) {
+	// First load: snap to avoid meaningless 0→N animation.
+	// Subsequent updates: animate.
+	set := v.animator.Set
+	if !v.burnInitialized {
+		set = v.animator.SetSnap
+		v.burnInitialized = true
+	}
+
+	set(animation.KeyBurnInput, float64(bc.inputTokens))
+	set(animation.KeyBurnOutput, float64(bc.outputTokens))
+	set(animation.KeyBurnCacheCreate, float64(bc.cacheCreate))
+	set(animation.KeyBurnCacheRead, float64(bc.cacheRead))
+	set(animation.KeyBurnCost, bc.totalCost)
+	set(animation.KeyBurnSavings, bc.cacheSavings)
+	set(animation.KeyBurnTokPerMin, bc.tokensPerMin)
+	set(animation.KeyBurnCostPerHr, bc.costPerHour)
+}
+
+// recomputeBurn aggregates session data into burn cache.
+// Must be called with v.mu held.
 func (v *LiveView) recomputeBurn() {
 	sEntries := v.sessionEntries()
 	v.cachedSessionEntries = sEntries
@@ -70,6 +137,8 @@ func (v *LiveView) recomputeBurn() {
 
 	if len(sEntries) == 0 {
 		v.burn = burnCache{}
+		v.clearBurnSprings()
+		v.burnInitialized = false
 		return
 	}
 
@@ -95,6 +164,24 @@ func (v *LiveView) recomputeBurn() {
 	bc.tokensPerMin = float64(activeTokens) / elapsed.Minutes()
 	bc.costPerHour = bc.totalCost / elapsed.Hours()
 	v.burn = bc
+
+	v.pushBurnSprings(bc)
+}
+
+// snapshot takes a consistent read-snapshot of mutable data under lock.
+func (v *LiveView) snapshot() renderSnapshot {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+	// Copy the map to prevent concurrent iteration panic.
+	modelsCopy := make(map[string]domain.ModelBreakdown, len(v.cachedModelBreakdown))
+	for k, mb := range v.cachedModelBreakdown {
+		modelsCopy[k] = mb
+	}
+	return renderSnapshot{
+		apiUsage:             v.apiUsage,
+		burn:                 v.burn, // struct copy — safe
+		cachedModelBreakdown: modelsCopy,
+	}
 }
 
 func (v *LiveView) Update(msg tea.Msg) tea.Cmd {
@@ -102,25 +189,24 @@ func (v *LiveView) Update(msg tea.Msg) tea.Cmd {
 }
 
 func (v *LiveView) Render(width, height int, compact bool) string {
+	snap := v.snapshot()
 	cardWidth := width - 4
 
 	var sections []string
-	sections = append(sections, v.renderSessionTimer(cardWidth, compact))
-	sections = append(sections, v.renderUtilization(cardWidth, compact))
-	sections = append(sections, v.renderBurnRate(cardWidth, compact))
-	sections = append(sections, v.renderModelBreakdown(cardWidth, compact))
+	sections = append(sections, v.renderSessionTimer(snap, cardWidth, compact))
+	sections = append(sections, v.renderUtilization(snap, cardWidth, compact))
+	sections = append(sections, v.renderBurnRate(snap, cardWidth, compact))
+	sections = append(sections, v.renderModelBreakdown(snap, cardWidth, compact))
 
 	return strings.Join(sections, "\n")
 }
 
 // sessionTimes returns normalized session start/end times and remaining duration.
-// The API's resets_at jitters between nn:00 and nn:59, so we round to the
-// nearest hour to get stable boundaries: nn:00 start → nn+4:59 end.
-func (v *LiveView) sessionTimes() (start, end time.Time, remaining time.Duration, ok bool) {
-	if v.apiUsage == nil {
+func (v *LiveView) sessionTimes(apiUsage *api.UsageData) (start, end time.Time, remaining time.Duration, ok bool) {
+	if apiUsage == nil {
 		return time.Time{}, time.Time{}, 0, false
 	}
-	endRaw, err := v.apiUsage.SessionEnd()
+	endRaw, err := apiUsage.SessionEnd()
 	if err != nil {
 		return time.Time{}, time.Time{}, 0, false
 	}
@@ -135,6 +221,7 @@ func (v *LiveView) sessionTimes() (start, end time.Time, remaining time.Duration
 }
 
 // sessionEntries returns entries filtered to the current API session window.
+// Must be called with v.mu held.
 func (v *LiveView) sessionEntries() []domain.UsageEntry {
 	if v.apiUsage != nil {
 		sessionStart, err := v.apiUsage.SessionStart()
@@ -186,14 +273,14 @@ func (v *LiveView) activeBlock() *domain.SessionBlock {
 
 // ── Section 1: Session Timer — Digital Clock ──
 
-func (v *LiveView) renderSessionTimer(cardWidth int, compact bool) string {
+func (v *LiveView) renderSessionTimer(snap renderSnapshot, cardWidth int, compact bool) string {
 	card := components.Card{
 		Title:   theme.AnimatedGradientText(i18n.T("session_timer"), v.AnimTick),
 		Width:   cardWidth,
 		Compact: compact,
 	}
 
-	start, end, remaining, ok := v.sessionTimes()
+	start, end, remaining, ok := v.sessionTimes(snap.apiUsage)
 	if !ok {
 		card.Content = theme.MutedStyle.Render(i18n.T("no_active_block"))
 		return card.Render()
@@ -214,14 +301,14 @@ func (v *LiveView) renderSessionTimer(cardWidth int, compact bool) string {
 
 // ── Section 2: Utilization — 2 Semicircle Gauges (5h + 7d) ──
 
-func (v *LiveView) renderUtilization(cardWidth int, compact bool) string {
+func (v *LiveView) renderUtilization(snap renderSnapshot, cardWidth int, compact bool) string {
 	card := components.Card{
 		Title:   theme.AnimatedGradientText(i18n.T("active_session_block"), v.AnimTick),
 		Width:   cardWidth,
 		Compact: compact,
 	}
 
-	if v.apiUsage == nil {
+	if snap.apiUsage == nil {
 		card.Content = theme.MutedStyle.Render(i18n.T("no_active_block"))
 		return card.Render()
 	}
@@ -237,8 +324,14 @@ func (v *LiveView) renderUtilization(cardWidth int, compact bool) string {
 		gaugeW = 24
 	}
 
-	fiveHourPct := v.apiUsage.FiveHour.Utilization / 100.0
-	sevenDayPct := v.apiUsage.SevenDay.Utilization / 100.0
+	fiveHourPct := v.animator.Get(animation.KeyGauge5h)
+	sevenDayPct := v.animator.Get(animation.KeyGauge7d)
+	if fiveHourPct < 0 {
+		fiveHourPct = 0
+	}
+	if sevenDayPct < 0 {
+		sevenDayPct = 0
+	}
 
 	gauges := []components.SemicircleGauge{
 		{
@@ -260,18 +353,27 @@ func (v *LiveView) renderUtilization(cardWidth int, compact bool) string {
 
 // ── Section 3: Burn Rate — 4 Stat Cards (session-filtered) ──
 
-func (v *LiveView) renderBurnRate(cardWidth int, compact bool) string {
+func (v *LiveView) renderBurnRate(snap renderSnapshot, cardWidth int, compact bool) string {
 	card := components.Card{
 		Title:   theme.AnimatedGradientText(i18n.T("burn_rate"), v.AnimTick),
 		Width:   cardWidth,
 		Compact: compact,
 	}
 
-	bc := v.burn
+	bc := snap.burn
 	if !bc.hasData {
 		card.Content = theme.MutedStyle.Render(i18n.T("no_active_session"))
 		return card.Render()
 	}
+
+	inputTokens := int(math.Round(v.animator.Get(animation.KeyBurnInput)))
+	outputTokens := int(math.Round(v.animator.Get(animation.KeyBurnOutput)))
+	cacheCreate := int(math.Round(v.animator.Get(animation.KeyBurnCacheCreate)))
+	cacheRead := int(math.Round(v.animator.Get(animation.KeyBurnCacheRead)))
+	totalCost := v.animator.Get(animation.KeyBurnCost)
+	cacheSavings := v.animator.Get(animation.KeyBurnSavings)
+	tokensPerMin := v.animator.Get(animation.KeyBurnTokPerMin)
+	costPerHour := v.animator.Get(animation.KeyBurnCostPerHr)
 
 	innerW := card.InnerWidth()
 	statGap := 2
@@ -285,22 +387,22 @@ func (v *LiveView) renderBurnRate(cardWidth int, compact bool) string {
 	// Gradient: SkyBlue → Lavender → Mauve → Peach → Gold
 	row1 := []components.StatCard{
 		{
-			Value: components.FormatNumber(bc.inputTokens),
-			Sub:   i18n.Tf("cached", components.FormatCompact(bc.cacheCreate)),
+			Value: components.FormatNumber(inputTokens),
+			Sub:   i18n.Tf("cached", components.FormatCompact(cacheCreate)),
 			Label: i18n.T("input_tokens"),
 			Width: thirdW,
 			Color: theme.ColorSkyBlue,
 		},
 		{
-			Value: components.FormatNumber(bc.outputTokens),
-			Sub:   i18n.Tf("cached", components.FormatCompact(bc.cacheRead)),
+			Value: components.FormatNumber(outputTokens),
+			Sub:   i18n.Tf("cached", components.FormatCompact(cacheRead)),
 			Label: i18n.T("output_tokens"),
 			Width: thirdW,
 			Color: theme.ColorLavender,
 		},
 		{
-			Value: fmt.Sprintf("$%.2f", bc.totalCost),
-			Sub:   i18n.Tf("cache_saved", fmt.Sprintf("%.2f", bc.cacheSavings)),
+			Value: fmt.Sprintf("$%.2f", totalCost),
+			Sub:   i18n.Tf("cache_saved", fmt.Sprintf("%.2f", cacheSavings)),
 			Label: i18n.T("session_cost"),
 			Width: thirdW,
 			Color: theme.ColorMauve,
@@ -315,13 +417,13 @@ func (v *LiveView) renderBurnRate(cardWidth int, compact bool) string {
 
 	row2 := []components.StatCard{
 		{
-			Value: components.FormatNumber(int(bc.tokensPerMin)),
+			Value: components.FormatNumber(int(tokensPerMin)),
 			Label: i18n.T("tokens_per_min"),
 			Width: halfW,
 			Color: theme.ColorPeach,
 		},
 		{
-			Value: fmt.Sprintf("$%.2f", bc.costPerHour),
+			Value: fmt.Sprintf("$%.2f", costPerHour),
 			Label: i18n.T("cost_per_hour"),
 			Width: halfW,
 			Color: theme.ColorGold,
@@ -337,21 +439,19 @@ func (v *LiveView) renderBurnRate(cardWidth int, compact bool) string {
 
 // ── Section 4: Model Breakdown — Pie Chart (session-filtered) ──
 
-func (v *LiveView) renderModelBreakdown(cardWidth int, compact bool) string {
+func (v *LiveView) renderModelBreakdown(snap renderSnapshot, cardWidth int, compact bool) string {
 	card := components.Card{
 		Title:   theme.AnimatedGradientText(i18n.T("model_breakdown"), v.AnimTick),
 		Width:   cardWidth,
 		Compact: compact,
 	}
 
-	models := v.cachedModelBreakdown
+	models := snap.cachedModelBreakdown
 	if len(models) == 0 {
 		card.Content = theme.MutedStyle.Render(i18n.T("no_data"))
 		return card.Render()
 	}
 
-	// Collect slices in deterministic order (sort by model name)
-	// to avoid Go map iteration randomness causing angle shifts.
 	modelNames := make([]string, 0, len(models))
 	for name := range models {
 		modelNames = append(modelNames, name)

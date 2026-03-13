@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/anomredux/claude-smi/internal/animation"
 	"github.com/anomredux/claude-smi/internal/api"
 	"github.com/anomredux/claude-smi/internal/domain"
 	"github.com/anomredux/claude-smi/internal/pricing"
@@ -18,7 +19,8 @@ func main() {
 		table = make(pricing.PricingTable)
 	}
 	calc := pricing.NewCalculator(table, pricing.CostModeAuto)
-	lv := views.NewLiveView(tz, calc)
+	animator := animation.NewSpringAnimator()
+	lv := views.NewLiveView(tz, calc, animator)
 
 	// Try fetching real API data
 	apiData, err := api.FetchUsage(context.Background())
