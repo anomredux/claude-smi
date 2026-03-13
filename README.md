@@ -24,7 +24,7 @@ Prebuilt binaries for macOS, Linux, Windows (amd64/arm64):
 https://github.com/anomredux/claude-smi/releases/latest
 
 ```bash
-VERSION=0.1.0
+VERSION=0.1.2
 
 # macOS (Apple Silicon)
 curl -sL https://github.com/anomredux/claude-smi/releases/download/v${VERSION}/claude-smi_${VERSION}_darwin_arm64.tar.gz | tar xz
@@ -55,13 +55,13 @@ go build -o claude-smi ./cmd/claude-smi
 
 ## Prerequisites
 
-claude-smi reads Claude Code's JSONL logs from `~/.claude/projects/` and fetches live session data using the OAuth token stored in your system's credential store.
+claude-smi reads Claude Code's JSONL logs from `~/.claude/projects/` and fetches live session data via the OAuth token in `~/.claude/.credentials.json`.
 
-| OS | Credential Store | Setup |
+| OS | Token Source | Setup |
 |---|---|---|
-| macOS | Keychain | None |
-| Linux | libsecret | `sudo apt install libsecret-tools` |
-| Windows | Credential Manager | None |
+| macOS | Keychain | None (Claude Code stores the token automatically) |
+| Linux | `~/.claude/.credentials.json` | None |
+| Windows | `~/.claude/.credentials.json` | None |
 
 ## Usage
 
