@@ -3,11 +3,13 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
 func TestLoadDefault(t *testing.T) {
-	cfg, err := Load("/nonexistent/path/config.toml")
+	t.Parallel()
+	cfg, err := Load(filepath.Join(t.TempDir(), "nonexistent.toml"))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -20,6 +22,7 @@ func TestLoadDefault(t *testing.T) {
 }
 
 func TestSaveAndLoad(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.toml")
 
@@ -40,9 +43,12 @@ func TestSaveAndLoad(t *testing.T) {
 }
 
 func TestLoad_InvalidTOML(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "bad.toml")
-	os.WriteFile(path, []byte("{{invalid toml}}"), 0644)
+	if err := os.WriteFile(path, []byte("{{invalid toml}}"), 0644); err != nil {
+		t.Fatalf("WriteFile failed: %v", err)
+	}
 
 	_, err := Load(path)
 	if err == nil {
@@ -51,6 +57,11 @@ func TestLoad_InvalidTOML(t *testing.T) {
 }
 
 func TestSave_FilePermissions(t *testing.T) {
+	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not support Unix file permissions")
+	}
+
 	dir := t.TempDir()
 	path := filepath.Join(dir, "perms.toml")
 
@@ -69,6 +80,7 @@ func TestSave_FilePermissions(t *testing.T) {
 }
 
 func TestDefaultPath_NotEmpty(t *testing.T) {
+	t.Parallel()
 	p := DefaultPath()
 	if p == "" {
 		t.Error("DefaultPath should not be empty")
