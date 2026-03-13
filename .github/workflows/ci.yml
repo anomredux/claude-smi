@@ -28,5 +28,3 @@ jobs:
 
       - name: Lint
         uses: golangci/golangci-lint-action@v7
-        with:
-          args: run
