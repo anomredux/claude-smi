@@ -2,11 +2,13 @@ package ui
 
 import (
 	"fmt"
+	"math"
 	"path/filepath"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/anomredux/claude-smi/internal/animation"
 	"github.com/anomredux/claude-smi/internal/i18n"
 	"github.com/anomredux/claude-smi/internal/theme"
 	"github.com/anomredux/claude-smi/internal/ui/components"
@@ -110,9 +112,10 @@ func (a App) renderActiveView(contentHeight int, compact bool) string {
 
 func (a App) renderStatusBar(contentHeight int) string {
 	var scrollInfo string
-	if a.scroll.lastContentLines > contentHeight {
+	lastContent := int(a.scroll.lastContentLines.Load())
+	if lastContent > contentHeight {
 		offset := a.scroll.viewScrollY[a.activeView]
-		maxOffset := a.scroll.lastContentLines - contentHeight
+		maxOffset := lastContent - contentHeight
 		if offset <= 0 {
 			scrollInfo = "Top"
 		} else if offset >= maxOffset {
@@ -206,25 +209,29 @@ func (a *App) renderProjectPicker() string {
 func (a App) applyScroll(content string, contentHeight int) string {
 	lines := strings.Split(content, "\n")
 	totalLines := len(lines)
-	a.scroll.lastContentLines = totalLines
+	a.scroll.lastContentLines.Store(int64(totalLines))
 
 	if totalLines <= contentHeight {
-		a.scroll.viewScrollY[a.activeView] = 0
+		// Content fits — no scrolling needed.
+		// Don't reset scroll here (View is read-only).
+		// setScrollTarget will clamp to 0 on next input.
 		return content
 	}
 
-	// Clamp offset
-	maxOffset := totalLines - contentHeight
-	offset := a.scroll.viewScrollY[a.activeView]
-	if offset < 0 {
-		offset = 0
-	}
-	if offset > maxOffset {
-		offset = maxOffset
-	}
-	a.scroll.viewScrollY[a.activeView] = offset
+	// Read animated scroll position from spring
+	key := animation.ScrollKey(int(a.activeView))
+	animatedOffset := int(math.Round(a.animator.Get(key)))
 
-	visible := lines[offset : offset+contentHeight]
+	// Clamp to valid range
+	maxOffset := totalLines - contentHeight
+	if animatedOffset < 0 {
+		animatedOffset = 0
+	}
+	if animatedOffset > maxOffset {
+		animatedOffset = maxOffset
+	}
+
+	visible := lines[animatedOffset : animatedOffset+contentHeight]
 	return strings.Join(visible, "\n")
 }
 
