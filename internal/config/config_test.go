@@ -13,8 +13,8 @@ func TestLoadDefault(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if cfg.General.Interval != 10 {
-		t.Errorf("default interval = %d, want 10", cfg.General.Interval)
+	if cfg.General.Interval != 60 {
+		t.Errorf("default interval = %d, want 60", cfg.General.Interval)
 	}
 	if cfg.General.Language != "en" {
 		t.Errorf("default language = %q, want en", cfg.General.Language)

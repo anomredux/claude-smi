@@ -27,7 +27,7 @@ type NotificationsConfig struct {
 func DefaultConfig() Config {
 	return Config{
 		General: GeneralConfig{
-			Interval: 10,
+			Interval: 60,
 			Timezone: "UTC",
 			Language: "en",
 		},
