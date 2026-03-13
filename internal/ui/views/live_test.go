@@ -10,7 +10,7 @@ import (
 )
 
 func TestSessionModelBreakdown(t *testing.T) {
-	v := NewLiveView(time.UTC, nil)
+	v := NewLiveView(time.UTC, nil, nil)
 
 	entries := []domain.UsageEntry{
 		{Model: "claude-sonnet-4-6", InputTokens: 100, OutputTokens: 50},
@@ -42,7 +42,7 @@ func TestSessionModelBreakdown(t *testing.T) {
 }
 
 func TestSessionModelBreakdownEmpty(t *testing.T) {
-	v := NewLiveView(time.UTC, nil)
+	v := NewLiveView(time.UTC, nil, nil)
 	breakdown := v.sessionModelBreakdown(nil)
 	if len(breakdown) != 0 {
 		t.Errorf("expected empty breakdown for nil entries; got %d", len(breakdown))
@@ -50,7 +50,7 @@ func TestSessionModelBreakdownEmpty(t *testing.T) {
 }
 
 func TestSessionEntries_WithApiUsage(t *testing.T) {
-	v := NewLiveView(time.UTC, nil)
+	v := NewLiveView(time.UTC, nil, nil)
 
 	now := time.Now()
 	resetAt := now.Add(3 * time.Hour) // 3 hours from now
@@ -76,7 +76,7 @@ func TestSessionEntries_WithApiUsage(t *testing.T) {
 }
 
 func TestSessionEntries_NoApiUsage(t *testing.T) {
-	v := NewLiveView(time.UTC, nil)
+	v := NewLiveView(time.UTC, nil, nil)
 	v.entries = []domain.UsageEntry{
 		{Timestamp: time.Now()},
 	}
@@ -94,7 +94,7 @@ func TestRecomputeBurn(t *testing.T) {
 		table = make(pricing.PricingTable)
 	}
 	calc := pricing.NewCalculator(table, pricing.CostModeAuto)
-	v := NewLiveView(time.UTC, calc)
+	v := NewLiveView(time.UTC, calc, nil)
 
 	now := time.Now()
 	resetAt := now.Add(3 * time.Hour)
@@ -146,7 +146,7 @@ func TestRecomputeBurn(t *testing.T) {
 }
 
 func TestRecomputeBurn_Empty(t *testing.T) {
-	v := NewLiveView(time.UTC, nil)
+	v := NewLiveView(time.UTC, nil, nil)
 	v.recomputeBurn()
 
 	if v.burn.hasData {
