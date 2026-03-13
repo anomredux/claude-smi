@@ -12,16 +12,16 @@ func TestFetchLiteLLM(t *testing.T) {
 	// Mock LiteLLM JSON response
 	mockData := map[string]interface{}{
 		"claude-sonnet-4-6": map[string]interface{}{
-			"input_cost_per_token":                3e-06,
-			"output_cost_per_token":               1.5e-05,
-			"cache_creation_input_token_cost":      3.75e-06,
-			"cache_read_input_token_cost":          3e-07,
+			"input_cost_per_token":            3e-06,
+			"output_cost_per_token":           1.5e-05,
+			"cache_creation_input_token_cost": 3.75e-06,
+			"cache_read_input_token_cost":     3e-07,
 		},
 		"claude-opus-4-6": map[string]interface{}{
-			"input_cost_per_token":                5e-06,
-			"output_cost_per_token":               2.5e-05,
-			"cache_creation_input_token_cost":      6.25e-06,
-			"cache_read_input_token_cost":          5e-07,
+			"input_cost_per_token":            5e-06,
+			"output_cost_per_token":           2.5e-05,
+			"cache_creation_input_token_cost": 6.25e-06,
+			"cache_read_input_token_cost":     5e-07,
 		},
 		// Provider-prefixed models should be excluded
 		"anthropic.claude-sonnet-4-6": map[string]interface{}{
@@ -40,7 +40,7 @@ func TestFetchLiteLLM(t *testing.T) {
 	}
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(mockData)
+		_ = json.NewEncoder(w).Encode(mockData)
 	}))
 	defer ts.Close()
 
@@ -115,7 +115,7 @@ func TestFetchLiteLLM_NoClaude(t *testing.T) {
 	}
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(mockData)
+		_ = json.NewEncoder(w).Encode(mockData)
 	}))
 	defer ts.Close()
 

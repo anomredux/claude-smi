@@ -19,11 +19,11 @@ func FormatNumber(n int) string {
 		return s
 	}
 	var result []byte
-	for i, c := range s {
+	for i := range s {
 		if i > 0 && (len(s)-i)%3 == 0 {
 			result = append(result, ',')
 		}
-		result = append(result, byte(c))
+		result = append(result, s[i])
 	}
 	out := string(result)
 	if negative {

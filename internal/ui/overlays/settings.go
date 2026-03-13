@@ -6,6 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
 	"github.com/anomredux/claude-smi/internal/config"
 	"github.com/anomredux/claude-smi/internal/i18n"
 	"github.com/anomredux/claude-smi/internal/theme"
@@ -101,7 +102,7 @@ func (s *SettingsOverlay) applyToConfig(key, value string) {
 		s.cfg.General.Timezone = value
 	case "interval":
 		var n int
-		fmt.Sscanf(value, "%d", &n)
+		_, _ = fmt.Sscanf(value, "%d", &n)
 		if n > 0 {
 			s.cfg.General.Interval = n
 		}

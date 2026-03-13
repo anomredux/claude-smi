@@ -1,57 +1,69 @@
 BINARY      := claude-smi
 CMD         := ./cmd/claude-smi
-GOBIN       ?= $(shell go env GOPATH)/bin
+GO          ?= go
+GOBIN       ?= $(shell $(GO) env GOPATH)/bin
 COVERAGE    := coverage.out
-COVER_PKGS  := $(shell go list ./... | grep -v -E '/(ui|theme)')
+COVER_PKGS  := $(shell $(GO) list ./... | grep -v -E '/(ui|theme)')
 
-.PHONY: all build test test-race cover cover-html vet lint staticcheck check clean install uninstall
+.PHONY: all build test test-short test-race cover cover-html fmt fix vet lint check clean install uninstall
 
-## all: build + check + cover (default target)
-all: build check cover
+## all: fmt + vet + test-short + lint + build (default target)
+all: fmt vet test-short lint build
 
 ## build: compile the binary
 build:
-	go build -o $(BINARY) $(CMD)
+	$(GO) build -o $(BINARY) $(CMD)
+
+## fmt: verify code formatting
+fmt:
+	@echo "Checking formatting..."
+	@test -z "$$(gofmt -l .)" || (echo "Unformatted files:"; gofmt -l .; exit 1)
+
+## fix: run go fix to modernize code
+fix:
+	@echo "Running go fix..."
+	$(GO) fix ./...
 
 ## test: run all tests
 test:
-	go test ./... -count=1
+	$(GO) test -count=1 ./...
+
+## test-short: run tests in short mode
+test-short:
+	$(GO) test -short -count=1 ./...
 
 ## test-race: run all tests with race detector
 test-race:
-	go test -race ./... -count=1
+	$(GO) test -race -count=1 ./...
 
 ## cover: run tests with coverage report (excludes ui/theme packages)
 cover:
-	go test -race -coverprofile=$(COVERAGE) -covermode=atomic $(COVER_PKGS)
-	go tool cover -func=$(COVERAGE)
+	$(GO) test -race -coverprofile=$(COVERAGE) -covermode=atomic $(COVER_PKGS)
+	$(GO) tool cover -func=$(COVERAGE)
 
 ## cover-html: open coverage report in browser
 cover-html: cover
-	go tool cover -html=$(COVERAGE)
+	$(GO) tool cover -html=$(COVERAGE)
 
 ## vet: run go vet
 vet:
-	go vet ./...
+	$(GO) vet ./...
 
-## staticcheck: run staticcheck (installs if missing)
-staticcheck:
-	@test -x $(GOBIN)/staticcheck || go install honnef.co/go/tools/cmd/staticcheck@latest
-	$(GOBIN)/staticcheck ./...
-
-## lint: vet + staticcheck
-lint: vet staticcheck
+## lint: golangci-lint (installs if missing)
+lint:
+	@test -x $(GOBIN)/golangci-lint || $(GO) install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	$(GOBIN)/golangci-lint run
 
 ## check: test-race + lint
 check: test-race lint
 
 ## clean: remove build artifacts
 clean:
-	rm -f $(BINARY) $(COVERAGE)
+	rm -f $(BINARY) $(BINARY).exe $(COVERAGE)
 
 ## install: install binary to GOPATH/bin
 install:
-	go install $(CMD)
+	$(GO) install $(CMD)
 
 ## uninstall: remove binary from GOPATH/bin
 uninstall:

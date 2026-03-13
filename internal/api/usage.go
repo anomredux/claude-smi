@@ -10,11 +10,11 @@ import (
 )
 
 const (
-	usageEndpoint  = "https://api.anthropic.com/api/oauth/usage"
-	keychainLabel  = "Claude Code-credentials"
-	anthropicBeta  = "oauth-2025-04-20"
-	requestTimeout = 5 * time.Second
-	SessionWindow  = 5 * time.Hour
+	usageEndpoint   = "https://api.anthropic.com/api/oauth/usage"
+	keychainLabel   = "Claude Code-credentials"
+	anthropicBeta   = "oauth-2025-04-20"
+	requestTimeout  = 5 * time.Second
+	SessionWindow   = 5 * time.Hour
 	maxResponseBody = 1 << 20 // 1 MB
 )
 
@@ -119,21 +119,4 @@ func FetchUsage(ctx context.Context) (*UsageData, error) {
 
 	data.FetchedAt = time.Now()
 	return &data, nil
-}
-
-// parseCredentialJSON extracts the OAuth access token from Claude Code's
-// credential JSON stored in the system credential store.
-func parseCredentialJSON(raw string) (string, error) {
-	var creds struct {
-		ClaudeAiOauth struct {
-			AccessToken string `json:"accessToken"`
-		} `json:"claudeAiOauth"`
-	}
-	if err := json.Unmarshal([]byte(raw), &creds); err != nil {
-		return "", fmt.Errorf("parse credentials: %w", err)
-	}
-	if creds.ClaudeAiOauth.AccessToken == "" {
-		return "", fmt.Errorf("empty access token")
-	}
-	return creds.ClaudeAiOauth.AccessToken, nil
 }

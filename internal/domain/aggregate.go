@@ -21,15 +21,15 @@ func (d DailyAggregate) TotalTokens() int {
 }
 
 type MonthlyAggregate struct {
-	Month                   string                 // "2006-01"
-	Days                    map[int]DailyAggregate // day number -> aggregate
-	TotalCost               float64
-	TotalTokens             int
-	TotalInputTokens        int
-	TotalOutputTokens       int
-	TotalCacheCreation      int
-	TotalCacheRead          int
-	TotalCalls              int
+	Month              string                 // "2006-01"
+	Days               map[int]DailyAggregate // day number -> aggregate
+	TotalCost          float64
+	TotalTokens        int
+	TotalInputTokens   int
+	TotalOutputTokens  int
+	TotalCacheCreation int
+	TotalCacheRead     int
+	TotalCalls         int
 }
 
 // AggregateDaily groups entries by date in the given timezone.

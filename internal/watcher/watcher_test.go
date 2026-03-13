@@ -12,14 +12,14 @@ func TestInitialScan(t *testing.T) {
 	dir := t.TempDir()
 
 	// Create test JSONL files
-	os.WriteFile(filepath.Join(dir, "test1.jsonl"), []byte(`{"type":"test"}`), 0644)
-	os.WriteFile(filepath.Join(dir, "test2.jsonl"), []byte(`{"type":"test2"}`), 0644)
-	os.WriteFile(filepath.Join(dir, "ignore.txt"), []byte(`not a jsonl`), 0644)
+	_ = os.WriteFile(filepath.Join(dir, "test1.jsonl"), []byte(`{"type":"test"}`), 0600)
+	_ = os.WriteFile(filepath.Join(dir, "test2.jsonl"), []byte(`{"type":"test2"}`), 0600)
+	_ = os.WriteFile(filepath.Join(dir, "ignore.txt"), []byte(`not a jsonl`), 0600)
 
 	// Create subdir with JSONL
 	subdir := filepath.Join(dir, "subagents")
-	os.MkdirAll(subdir, 0755)
-	os.WriteFile(filepath.Join(subdir, "agent.jsonl"), []byte(`{"type":"test3"}`), 0644)
+	_ = os.MkdirAll(subdir, 0750)
+	_ = os.WriteFile(filepath.Join(subdir, "agent.jsonl"), []byte(`{"type":"test3"}`), 0600)
 
 	w := New([]string{dir}, 5*time.Second, nil)
 	files, err := w.InitialScan()
@@ -48,7 +48,7 @@ func TestSetOffset(t *testing.T) {
 func TestPollDetectsChanges(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.jsonl")
-	os.WriteFile(testFile, []byte(`{"line":1}`), 0644)
+	_ = os.WriteFile(testFile, []byte(`{"line":1}`), 0600)
 
 	var mu sync.Mutex
 	var changes []FileChange
@@ -60,10 +60,12 @@ func TestPollDetectsChanges(t *testing.T) {
 	})
 
 	// Initial scan sets offset to 0
-	w.InitialScan()
+	_, _ = w.InitialScan()
 
 	// Start watcher
-	w.Start()
+	if err := w.Start(); err != nil {
+		t.Fatalf("Start failed: %v", err)
+	}
 	defer w.Stop()
 
 	// Wait for poll to detect the file (offset 0, size > 0)

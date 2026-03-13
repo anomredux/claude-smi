@@ -11,9 +11,9 @@ func TestDedup(t *testing.T) {
 	now := time.Now()
 	entries := []domain.UsageEntry{
 		{Timestamp: now.Add(1 * time.Minute), MessageID: "msg_1", RequestID: "req_1", InputTokens: 100},
-		{Timestamp: now, MessageID: "msg_1", RequestID: "req_1", InputTokens: 50},                      // duplicate, earlier
+		{Timestamp: now, MessageID: "msg_1", RequestID: "req_1", InputTokens: 50}, // duplicate, earlier
 		{Timestamp: now.Add(2 * time.Minute), MessageID: "msg_2", RequestID: "req_2", InputTokens: 200},
-		{Timestamp: now.Add(3 * time.Minute), MessageID: "", RequestID: "", InputTokens: 10},            // no key, kept
+		{Timestamp: now.Add(3 * time.Minute), MessageID: "", RequestID: "", InputTokens: 10}, // no key, kept
 	}
 
 	result := Dedup(entries)

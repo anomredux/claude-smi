@@ -6,6 +6,8 @@ import (
 )
 
 func TestParseCredentialJSON(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		input   string
@@ -41,6 +43,7 @@ func TestParseCredentialJSON(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got, err := parseCredentialJSON(tt.input)
 			if tt.wantErr {
 				if err == nil {
@@ -59,6 +62,8 @@ func TestParseCredentialJSON(t *testing.T) {
 }
 
 func TestUsageData_SessionStart(t *testing.T) {
+	t.Parallel()
+
 	data := UsageData{
 		FiveHour: WindowData{
 			Utilization: 50.0,
@@ -78,6 +83,8 @@ func TestUsageData_SessionStart(t *testing.T) {
 }
 
 func TestUsageData_SessionEnd(t *testing.T) {
+	t.Parallel()
+
 	data := UsageData{
 		FiveHour: WindowData{
 			ResetsAt: "2025-01-15T17:00:00Z",
@@ -96,6 +103,8 @@ func TestUsageData_SessionEnd(t *testing.T) {
 }
 
 func TestUsageData_SessionRemaining(t *testing.T) {
+	t.Parallel()
+
 	// Set reset time in the past
 	past := time.Now().Add(-1 * time.Hour).Format(time.RFC3339)
 	data := UsageData{
@@ -124,6 +133,8 @@ func TestUsageData_SessionRemaining(t *testing.T) {
 }
 
 func TestUsageData_InvalidResetsAt(t *testing.T) {
+	t.Parallel()
+
 	data := UsageData{
 		FiveHour: WindowData{ResetsAt: "not-a-date"},
 	}
@@ -145,6 +156,8 @@ func TestUsageData_InvalidResetsAt(t *testing.T) {
 }
 
 func TestWindowData_ResetTime(t *testing.T) {
+	t.Parallel()
+
 	w := WindowData{ResetsAt: "2025-06-15T10:30:00Z"}
 	got, err := w.ResetTime()
 	if err != nil {

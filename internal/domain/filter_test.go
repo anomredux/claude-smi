@@ -12,7 +12,7 @@ func TestFilterByTimeRange(t *testing.T) {
 	entries := []UsageEntry{
 		{Timestamp: base.AddDate(0, 0, -5)}, // Feb 10
 		{Timestamp: base.AddDate(0, 0, -3)}, // Feb 12
-		{Timestamp: base},                    // Feb 15
+		{Timestamp: base},                   // Feb 15
 		{Timestamp: base.AddDate(0, 0, 3)},  // Feb 18
 		{Timestamp: base.AddDate(0, 0, 7)},  // Feb 22
 	}

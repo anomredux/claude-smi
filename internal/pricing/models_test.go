@@ -44,8 +44,8 @@ func TestPricingTable_Merge_OverrideAndAdd(t *testing.T) {
 		"claude-haiku-4-5": {Input: 1.0, Output: 5.0},
 	}
 	overlay := PricingTable{
-		"claude-opus-4-6":    {Input: 4.0, Output: 20.0}, // override
-		"claude-sonnet-4-6":  {Input: 3.0, Output: 15.0}, // new
+		"claude-opus-4-6":   {Input: 4.0, Output: 20.0}, // override
+		"claude-sonnet-4-6": {Input: 3.0, Output: 15.0}, // new
 	}
 
 	base.Merge(overlay)
@@ -83,10 +83,10 @@ func TestPricingTable_Merge_WithEmpty(t *testing.T) {
 
 func TestPricingTable_Lookup_LongestPrefixWins(t *testing.T) {
 	table := PricingTable{
-		"claude":            {Input: 1.0},
-		"claude-opus":       {Input: 2.0},
-		"claude-opus-4":     {Input: 3.0},
-		"claude-opus-4-6":   {Input: 5.0},
+		"claude":          {Input: 1.0},
+		"claude-opus":     {Input: 2.0},
+		"claude-opus-4":   {Input: 3.0},
+		"claude-opus-4-6": {Input: 5.0},
 	}
 
 	tests := []struct {

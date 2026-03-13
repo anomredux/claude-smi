@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+
 	"github.com/anomredux/claude-smi/internal/theme"
 )
 
@@ -141,8 +142,8 @@ func enforceMinArc(slices []PieSlice, outerR float64) []float64 {
 	}
 
 	// Minimum arc = 4 pixels at outer radius → minimum percentage
-	minArc := 4.0 / outerR                    // radians
-	minPct := minArc / (2 * math.Pi) * 100.0  // percentage
+	minArc := 4.0 / outerR                   // radians
+	minPct := minArc / (2 * math.Pi) * 100.0 // percentage
 
 	// Boost small slices, track deficit
 	var deficit float64

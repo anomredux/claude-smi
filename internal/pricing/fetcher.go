@@ -41,10 +41,10 @@ var httpClient = &http.Client{
 
 // liteLLMEntry represents a single model entry from LiteLLM pricing JSON.
 type liteLLMEntry struct {
-	InputCostPerToken *float64 `json:"input_cost_per_token"`
+	InputCostPerToken  *float64 `json:"input_cost_per_token"`
 	OutputCostPerToken *float64 `json:"output_cost_per_token"`
-	CacheCreationCost *float64 `json:"cache_creation_input_token_cost"`
-	CacheReadCost     *float64 `json:"cache_read_input_token_cost"`
+	CacheCreationCost  *float64 `json:"cache_creation_input_token_cost"`
+	CacheReadCost      *float64 `json:"cache_read_input_token_cost"`
 }
 
 // FetchLiteLLM fetches pricing from LiteLLM's GitHub-hosted JSON and returns

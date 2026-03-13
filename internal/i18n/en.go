@@ -1,6 +1,6 @@
 package i18n
 
-var en = map[string]string{
+var en = map[string]string{ //nolint:gosec // G101 false positive: i18n string map, not credentials
 	// App
 	"initializing":       "Initializing...",
 	"terminal_too_small": "Terminal too small (80x24 minimum).",
@@ -60,9 +60,9 @@ var en = map[string]string{
 	"detail_back_help": "esc/backspace: back to list",
 
 	// Daily Report view (calendar)
-	"total":           "Total",
-	"cache_create":    "Cache W",
-	"cache_read":      "Cache R",
+	"total":             "Total",
+	"cache_create":      "Cache W",
+	"cache_read":        "Cache R",
 	"change_month_help": "left/right: change month",
 	"day_mon":           "Mon",
 	"day_tue":           "Tue",
@@ -73,22 +73,22 @@ var en = map[string]string{
 	"day_sun":           "Sun",
 
 	// Help overlay
-	"keyboard_shortcuts":    "Keyboard Shortcuts",
-	"help_switch_views":     "Switch to Live / Blocks / Report",
-	"help_cycle_views":      "Cycle views forward / backward",
-	"help_navigate":         "Navigate list items",
-	"help_drill_down":       "Drill down / select",
-	"help_go_back":          "Go back / close overlay",
-	"help_toggle_help":      "Toggle this help",
-	"help_open_settings":    "Open settings",
-	"help_force_refresh":    "Force data refresh",
-	"help_project_filter":   "Project filter",
-	"help_navigate_months":  "Navigate months (Report)",
-	"help_page_scroll":      "Page scroll",
-	"help_top_bottom":       "Jump to top / bottom",
-	"help_mouse_scroll":     "Scroll content",
-	"help_quit":             "Quit",
-	"help_close":            "Press ? or Esc to close",
+	"keyboard_shortcuts":   "Keyboard Shortcuts",
+	"help_switch_views":    "Switch to Live / Blocks / Report",
+	"help_cycle_views":     "Cycle views forward / backward",
+	"help_navigate":        "Navigate list items",
+	"help_drill_down":      "Drill down / select",
+	"help_go_back":         "Go back / close overlay",
+	"help_toggle_help":     "Toggle this help",
+	"help_open_settings":   "Open settings",
+	"help_force_refresh":   "Force data refresh",
+	"help_project_filter":  "Project filter",
+	"help_navigate_months": "Navigate months (Report)",
+	"help_page_scroll":     "Page scroll",
+	"help_top_bottom":      "Jump to top / bottom",
+	"help_mouse_scroll":    "Scroll content",
+	"help_quit":            "Quit",
+	"help_close":           "Press ? or Esc to close",
 
 	// Settings overlay
 	"settings":         "Settings",
